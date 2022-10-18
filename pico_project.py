@@ -1167,10 +1167,10 @@ def generateProjectFiles(projectPath, projectName, sdkPath, projects, debugger):
                     '      "name": "Linux",\n'
                     '      "includePath": [\n'
                     '        "${workspaceFolder}/**",\n'
-                    '        "{sdk}/**"\n'
+                    '        "'+os.environ['PICO_SDK_PATH']+'/**"\n'
                     '      ],\n'
                     '      "defines": [],\n'
-                    '      "compilerPath": "{compiler}/bin/arm-none-eabi-gcc.exe",\n'
+                    '      "compilerPath": "'+sys.prefix+'/bin/arm-none-eabi-gcc.exe",\n'
                     '      "cStandard": "gnu17",\n'
                     '      "cppStandard": "gnu++14",\n'
                     '      "intelliSenseMode": "linux-gcc-arm",\n'
@@ -1178,7 +1178,7 @@ def generateProjectFiles(projectPath, projectName, sdkPath, projects, debugger):
                     '    }\n'
                     '  ],\n'
                     '  "version": 4\n'
-                    '}\n').format(sdk=os.environ['PICO_SDK_PATH'], compiler=sys.prefix)
+                    '}\n')
             else:
                 c1 = ('{\n'
                     '  "configurations": [\n'

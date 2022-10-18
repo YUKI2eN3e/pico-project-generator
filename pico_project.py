@@ -30,6 +30,8 @@ CMAKECACHE_FILENAME = 'CMakeCache.txt'
 
 COMPILER_NAME = 'arm-none-eabi-gcc'
 
+ALT_MAKE_NAMES = ['make', 'mingw32-make'] # Add any other names here
+
 VSCODE_LAUNCH_FILENAME = 'launch.json'
 VSCODE_C_PROPERTIES_FILENAME = 'c_cpp_properties.json'
 VSCODE_SETTINGS_FILENAME ='settings.json'
@@ -218,6 +220,7 @@ configuration_dictionary = list(dict())
 
 isMac = False
 isWindows = False
+isMinGW = False
 
 def GetBackground():
     return 'white'
@@ -853,9 +856,11 @@ class ProjectWindow(tk.Frame):
         self.configs = ConfigurationWindow(self, self.configs).get()
 
 def CheckPrerequisites():
-    global isMac, isWindows
+    global isMac, isWindows, isMinGW
     isMac = (platform.system() == 'Darwin')
     isWindows = (platform.system() == 'Windows')
+    if isWindows:
+        isMinGW = ("mingw" in sys.prefix.lower())
 
     # Do we have a compiler?
     return shutil.which(COMPILER_NAME)
@@ -1154,25 +1159,45 @@ def generateProjectFiles(projectPath, projectName, sdkPath, projects, debugger):
                   '    }\n'
                   '  ]\n'
                   '}\n')
-
-            c1 = ('{\n'
-                  '  "configurations": [\n'
-                  '    {\n'
-                  '      "name": "Linux",\n'
-                  '      "includePath": [\n'
-                  '        "${workspaceFolder}/**",\n'
-                  '        "${env:PICO_SDK_PATH}/**"\n'
-                  '      ],\n'
-                  '      "defines": [],\n'
-                  '      "compilerPath": "/usr/bin/arm-none-eabi-gcc",\n'
-                  '      "cStandard": "gnu17",\n'
-                  '      "cppStandard": "gnu++14",\n'
-                  '      "intelliSenseMode": "linux-gcc-arm",\n'
-                  '      "configurationProvider" : "ms-vscode.cmake-tools"\n'
-                  '    }\n'
-                  '  ],\n'
-                  '  "version": 4\n'
-                  '}\n')
+            c1 = ""
+            if isMinGW:
+                c1 = ('{\n'
+                    '  "configurations": [\n'
+                    '    {\n'
+                    '      "name": "Linux",\n'
+                    '      "includePath": [\n'
+                    '        "${workspaceFolder}/**",\n'
+                    '        "{sdk}/**"\n'
+                    '      ],\n'
+                    '      "defines": [],\n'
+                    '      "compilerPath": "{compiler}/bin/arm-none-eabi-gcc.exe",\n'
+                    '      "cStandard": "gnu17",\n'
+                    '      "cppStandard": "gnu++14",\n'
+                    '      "intelliSenseMode": "linux-gcc-arm",\n'
+                    '      "configurationProvider" : "ms-vscode.cmake-tools"\n'
+                    '    }\n'
+                    '  ],\n'
+                    '  "version": 4\n'
+                    '}\n').format(sdk=os.environ['PICO_SDK_PATH'], compiler=sys.prefix)
+            else:
+                c1 = ('{\n'
+                    '  "configurations": [\n'
+                    '    {\n'
+                    '      "name": "Linux",\n'
+                    '      "includePath": [\n'
+                    '        "${workspaceFolder}/**",\n'
+                    '        "${env:PICO_SDK_PATH}/**"\n'
+                    '      ],\n'
+                    '      "defines": [],\n'
+                    '      "compilerPath": "/usr/bin/arm-none-eabi-gcc",\n'
+                    '      "cStandard": "gnu17",\n'
+                    '      "cppStandard": "gnu++14",\n'
+                    '      "intelliSenseMode": "linux-gcc-arm",\n'
+                    '      "configurationProvider" : "ms-vscode.cmake-tools"\n'
+                    '    }\n'
+                    '  ],\n'
+                    '  "version": 4\n'
+                    '}\n')
 
             s1 = ( '{\n'
                    '  "cmake.configureOnOpen": false,\n'
@@ -1329,6 +1354,13 @@ def DoEverything(parent, params):
         cpus = 1
 
     if isWindows:
+        if isMinGW:
+            cmakeCmd = 'cmake -DCMAKE_BUILD_TYPE=Debug -G "MinGW Makefiles" ..'
+            make = ""
+            for cmd in ALT_MAKE_NAMES:
+                if shutil.which(cmd) is not None:
+                    make = cmd
+            makeCmd = make + ' '
         cmakeCmd = 'cmake -DCMAKE_BUILD_TYPE=Debug -G "NMake Makefiles" ..'
         makeCmd = 'nmake '
     else:
